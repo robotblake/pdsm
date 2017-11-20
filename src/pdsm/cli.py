@@ -47,7 +47,7 @@ def run(src, version, alias):
                 partition_keys=dataset.partition_keys,
             )
 
-        elif set(dataset.columns) - set(table.columns):
+        elif set(dataset.columns) != set(table.columns):
             print('Updating {}'.format(table.name))
             table = Table.update(
                 database_name=table.database_name,
@@ -60,7 +60,7 @@ def run(src, version, alias):
         table_partitions = table.get_partitions()
         different = []
         for table_partition in table_partitions:
-            if set(dataset.columns) - set(table_partition.columns):
+            if set(dataset.columns) != set(table_partition.columns):
                 table_partition.columns = dataset.columns
                 different.append(table_partition)
         missing = sorted(set(dataset.partitions) - set(table_partitions))
