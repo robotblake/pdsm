@@ -20,8 +20,9 @@ def run(src, version, alias):
         location = locations[-1]
     dataset = Dataset.get(location)
 
-    table_names = [underscore(alias or dataset.name) + '_' + dataset.version,
-                   underscore(alias or dataset.name)]
+    table_names = [underscore(alias or dataset.name) + '_' + dataset.version]
+    if not version:
+        table_names.append(underscore(alias or dataset.name))
 
     for table_name in table_names:
         table = Table.get('telemetry', table_name)
