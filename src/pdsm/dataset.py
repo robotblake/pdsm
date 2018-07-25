@@ -109,6 +109,8 @@ class Dataset(object):
             matches = PARTITION_MATCHER.match(summary['Key'], len(prefix))
             if matches:
                 partition_names.add(matches.group(1))
+        if latest is None:
+            return None
         partition_names = sorted(partition_names)
 
         # read columns from object

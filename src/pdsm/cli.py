@@ -19,6 +19,9 @@ def run(src, version, alias):
             return
         location = locations[-1]
     dataset = Dataset.get(location)
+    if dataset is None:
+        print('Skipping {}, no parquet files found'.format(location))
+        return
 
     table_names = [underscore(alias or dataset.name) + '_' + dataset.version]
     if not version:
