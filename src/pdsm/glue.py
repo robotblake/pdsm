@@ -36,7 +36,8 @@ class Table(object):
         partitions = []
         while True:
             result = client.get_partitions(**opts)
-            partitions += [Partition.from_input(pd) for pd in result['Partitions']]
+            if 'Partitions' in result:
+                partitions += [Partition.from_input(pd) for pd in result['Partitions']]
             if 'NextToken' in result:
                 opts['NextToken'] = result['NextToken']
             else:
