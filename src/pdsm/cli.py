@@ -1,4 +1,5 @@
-from logging import getLogger
+import logging
+
 import click
 
 from .dataset import Dataset
@@ -8,7 +9,8 @@ from .glue import Table
 from .utils import ensure_trailing_slash
 from .utils import underscore
 
-logger = getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def run(src, version, alias):
