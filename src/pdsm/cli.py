@@ -1,3 +1,4 @@
+from logging import getLogger
 import click
 
 from .dataset import Dataset
@@ -6,6 +7,8 @@ from .dataset import get_versions
 from .glue import Table
 from .utils import ensure_trailing_slash
 from .utils import underscore
+
+logger = getLogger(__name__)
 
 
 def run(src, version, alias):
@@ -20,8 +23,10 @@ def run(src, version, alias):
         location = locations[-1]
     dataset = Dataset.get(location)
     if dataset is None:
-        print('Skipping {}, no parquet files found'.format(location))
+        logger.info('Skipping %s, no parquet files found', location)
         return
+
+    logger.info('Started processing %s', location)
 
     table_names = [underscore(alias or dataset.name) + '_' + dataset.version]
     if not version:
@@ -31,7 +36,7 @@ def run(src, version, alias):
         table = Table.get('telemetry', table_name)
 
         if not table:
-            print('Creating {}'.format(table_name))
+            logger.info('Creating %s', table_name)
             table = Table.create(
                 database_name='telemetry',
                 name=table_name,
@@ -41,7 +46,7 @@ def run(src, version, alias):
             )
 
         elif table.location != dataset.location:
-            print('Recreating {}'.format(table.name))
+            logger.info('Recreating %s', table_name)
             Table.drop('telemetry', table.name)
             table = Table.create(
                 database_name='telemetry',
@@ -52,7 +57,7 @@ def run(src, version, alias):
             )
 
         elif set(dataset.columns) != set(table.columns):
-            print('Updating {}'.format(table.name))
+            logger.info('Updating %s', table_name)
             table = Table.update(
                 database_name=table.database_name,
                 name=table.name,
@@ -69,11 +74,13 @@ def run(src, version, alias):
                 different.append(table_partition)
         missing = sorted(set(dataset.partitions) - set(table_partitions))
         if different:
-            print('Recreating {} partitions on {}'.format(len(different), table.name))
+            logger.info('Recreating %d partitions on %s', len(different), table_name)
             table.recreate_partitions(different)
         if missing:
-            print('Adding {} partitions to {}'.format(len(missing), table.name))
+            logger.info('Adding %d partitions to %s', len(missing), table_name)
             table.add_partitions(missing)
+
+    logger.info('Finished processing %s', location)
 
 
 @click.command()
