@@ -30,6 +30,19 @@ class Table(object):
         self.location = location
         self.partition_keys = partition_keys
 
+    def list_partitions(self):
+        client = botocore.session.get_session().create_client('glue')
+        opts = {'DatabaseName': self.database_name, 'TableName': self.name}
+        while True:
+            result = client.get_partitions(**opts)
+            if 'Partitions' in result:
+                for pd in result['Partitions']:
+                    yield Partition.from_input(pd)
+            if 'NextToken' in result:
+                opts['NextToken'] = result['NextToken']
+            else:
+                break
+
     def get_partitions(self):
         client = botocore.session.get_session().create_client('glue')
         opts = {'DatabaseName': self.database_name, 'TableName': self.name}

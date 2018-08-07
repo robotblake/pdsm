@@ -66,16 +66,27 @@ def run(src, version, alias):
                 partition_keys=dataset.partition_keys,
             )
 
-        table_partitions = table.get_partitions()
+        columns_set = set(dataset.columns)
+
         different = []
-        for table_partition in table_partitions:
-            if set(dataset.columns) != set(table_partition.columns):
+        missing = set(dataset.partitions)
+
+        for table_partition in table.list_partitions():
+            if columns_set != set(table_partition.columns):
                 table_partition.columns = dataset.columns
                 different.append(table_partition)
-        missing = sorted(set(dataset.partitions) - set(table_partitions))
+
+            missing.discard(table_partition)
+
+            if len(different) == 100:
+                logger.info('Recreating %d partitions on %s', len(different), table_name)
+                table.recreate_partitions(different)
+                different = []
+
         if different:
             logger.info('Recreating %d partitions on %s', len(different), table_name)
             table.recreate_partitions(different)
+
         if missing:
             logger.info('Adding %d partitions to %s', len(missing), table_name)
             table.add_partitions(missing)
