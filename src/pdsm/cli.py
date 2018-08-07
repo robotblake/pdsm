@@ -1,4 +1,5 @@
 import logging
+import time
 
 import click
 
@@ -9,7 +10,12 @@ from .glue import Table
 from .utils import ensure_trailing_slash
 from .utils import underscore
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    format='time="%(asctime)s" level=%(levelname)s name=%(name)s msg="%(message)s"',
+    datefmt="%Y-%m-%dT%H:%M:%SZ",
+    level=logging.INFO,
+)
+logging.Formatter.converter = time.gmtime
 logger = logging.getLogger(__name__)
 
 
