@@ -82,6 +82,17 @@ def get_object_summaries(bucket, prefix):
     return sorted(summaries, key=lambda x: x['LastModified'])
 
 
+def list_object_summaries(bucket, prefix):
+    for result in get_iterator(bucket, prefix, search='Contents[]'):
+        if IGNORED_MATCHER.match(result['Key']):
+            continue
+        if result['Size'] < 12:
+            continue
+        if '=__HIVE_DEFAULT_PARTITION__/' in result['Key']:
+            continue
+        yield result
+
+
 @total_ordering
 class Dataset(object):
     __slots__ = ['name', 'version', 'columns', 'partitions', 'location', 'partition_keys']
@@ -103,7 +114,7 @@ class Dataset(object):
         # get latest object and partition names
         latest = None
         partition_names = set()
-        for summary in get_object_summaries(bucket, prefix):
+        for summary in list_object_summaries(bucket, prefix):
             if not latest or summary['LastModified'] > latest['LastModified']:
                 latest = summary
             matches = PARTITION_MATCHER.match(summary['Key'], len(prefix))

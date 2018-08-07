@@ -21,6 +21,8 @@ def run(src, version, alias):
         if not locations:
             return
         location = locations[-1]
+
+    logger.info('Loading dataset from %s', location)
     dataset = Dataset.get(location)
     if dataset is None:
         logger.info('Skipping %s, no parquet files found', location)
