@@ -99,7 +99,7 @@ def run(src, version, alias):
 
         if missing:
             logger.info('Adding %d partitions to %s', len(missing), table_name)
-            table.add_partitions(missing)
+            table.add_partitions(sorted(missing))
 
     logger.info('Finished processing %s', location)
 
