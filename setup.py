@@ -56,6 +56,7 @@ setup(
         'botocore>=1.6.5',
         'click>=6.7,<7.0',
         'thrift==0.10.0',
+        'typing==3.6.4',
     ],
     entry_points={
         'console_scripts': [

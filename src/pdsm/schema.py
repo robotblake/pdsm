@@ -1,4 +1,6 @@
 import struct
+from typing import List  # noqa: F401
+from typing import Text  # noqa: F401
 
 import botocore.session
 from thrift.protocol import TCompactProtocol
@@ -6,6 +8,7 @@ from thrift.transport import TTransport
 
 from .models import Column
 from .parquet.ttypes import FileMetaData
+from .parquet.ttypes import SchemaElement  # noqa: F401
 
 TYPE_MAP = {
     0: 'boolean',    # boolean
@@ -23,6 +26,7 @@ class ParquetError(Exception):
 
 
 def read_metadata(bucket, key, size):
+    # type: (Text, Text, int) -> FileMetaData
     session = botocore.session.get_session()
     client = session.create_client('s3')
 
@@ -42,15 +46,19 @@ def read_metadata(bucket, key, size):
 
     transport = TTransport.TFileObjectTransport(response['Body'])
     protocol = TCompactProtocol.TCompactProtocol(transport)
-    metadata = FileMetaData()
+    metadata = FileMetaData()  # type: ignore
     metadata.read(protocol)
+
+    if not isinstance(metadata, FileMetaData):
+        raise ParquetError('error parsing metadata')
 
     return metadata
 
 
 def to_columns(schema):
+    # type: (List[SchemaElement]) -> List[Column]
     columns = []
-    context = []
+    context = []  # type: List[List[int]]
 
     column_name = ''
     column_type = ''

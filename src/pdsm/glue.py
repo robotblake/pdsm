@@ -1,11 +1,17 @@
 import copy
+from typing import Any       # noqa: F401
+from typing import Dict      # noqa: F401
+from typing import Iterable  # noqa: F401
+from typing import List      # noqa: F401
+from typing import Optional  # noqa: F401
+from typing import Text      # noqa: F401
 
 import botocore.session
 from botocore.exceptions import ClientError
 
-from .models import STORAGE_DESCRIPTOR_TEMPLATE
 from .models import Column
 from .models import Partition
+from .models import STORAGE_DESCRIPTOR_TEMPLATE
 from .utils import chunks
 from .utils import ensure_trailing_slash
 from .utils import remove_trailing_slash
@@ -17,13 +23,14 @@ TABLE_INPUT_TEMPLATE = {
     'PartitionKeys': [],
     'TableType': 'EXTERNAL_TABLE',
     'Parameters': {'EXTERNAL': 'TRUE'},
-}
+}  # type: Dict[Text, Any]
 
 
 class Table(object):
     __slots__ = ['database_name', 'name', 'columns', 'location', 'partition_keys']
 
     def __init__(self, database_name, name, columns, location, partition_keys):
+        # type: (Text, Text, List[Column], Text, List[Column]) -> None
         self.database_name = database_name
         self.name = name
         self.columns = columns
@@ -31,6 +38,7 @@ class Table(object):
         self.partition_keys = partition_keys
 
     def list_partitions(self):
+        # type: () -> Iterable[Partition]
         client = botocore.session.get_session().create_client('glue')
         opts = {'DatabaseName': self.database_name, 'TableName': self.name}
         while True:
@@ -44,9 +52,10 @@ class Table(object):
                 break
 
     def get_partitions(self):
+        # type: () -> List[Partition]
         client = botocore.session.get_session().create_client('glue')
         opts = {'DatabaseName': self.database_name, 'TableName': self.name}
-        partitions = []
+        partitions = []  # type: List[Partition]
         while True:
             result = client.get_partitions(**opts)
             if 'Partitions' in result:
@@ -58,6 +67,7 @@ class Table(object):
         return partitions
 
     def add_partitions(self, partitions):
+        # type: (List[Partition]) -> None
         client = botocore.session.get_session().create_client('glue')
         for partition_chunk in chunks(partitions, 100):
             data = {'DatabaseName': self.database_name,
@@ -66,6 +76,7 @@ class Table(object):
             client.batch_create_partition(**data)
 
     def recreate_partitions(self, partitions):
+        # type: (List[Partition]) -> None
         client = botocore.session.get_session().create_client('glue')
         for partition_chunk in chunks(partitions, 25):
             data = {'DatabaseName': self.database_name,
@@ -79,6 +90,7 @@ class Table(object):
 
     @classmethod
     def from_input(cls, database_name, data):
+        # type: (Text, Dict[Text, Any]) -> Table
         table = cls(
             database_name=database_name,
             name=data['Name'],
@@ -89,6 +101,7 @@ class Table(object):
         return table
 
     def to_input(self):
+        # type: () -> Dict[Text, Any]
         data = copy.deepcopy(TABLE_INPUT_TEMPLATE)
         data['Name'] = self.name
         data['StorageDescriptor']['Columns'] = [column.to_input() for column in self.columns]
@@ -98,6 +111,7 @@ class Table(object):
 
     @classmethod
     def get(cls, database_name, name):
+        # type: (Text, Text) -> Optional[Table]
         client = botocore.session.get_session().create_client('glue')
         try:
             result = client.get_table(DatabaseName=database_name, Name=name)
@@ -109,6 +123,7 @@ class Table(object):
 
     @classmethod
     def create(cls, database_name, name, columns, location, partition_keys):
+        # type: (Text, Text, List[Column], Text, List[Column]) -> Table
         client = botocore.session.get_session().create_client('glue')
         table = cls(
             database_name=database_name,
@@ -125,6 +140,7 @@ class Table(object):
 
     @classmethod
     def update(cls, database_name, name, columns, location, partition_keys):
+        # type: (Text, Text, List[Column], Text, List[Column]) -> Table
         client = botocore.session.get_session().create_client('glue')
         table = cls(
             database_name=database_name,
@@ -141,6 +157,7 @@ class Table(object):
 
     @classmethod
     def drop(cls, database_name, name):
+        # type: (Text, Text) -> None
         client = botocore.session.get_session().create_client('glue')
         client.delete_table(
             DatabaseName=database_name,

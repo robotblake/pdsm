@@ -1,6 +1,12 @@
 import datetime
 import re
 from functools import total_ordering
+from typing import Any       # noqa: F401
+from typing import Dict      # noqa: F401
+from typing import Iterable  # noqa: F401
+from typing import List      # noqa: F401
+from typing import Optional  # noqa: F401
+from typing import Text      # noqa: F401
 
 import botocore.session
 from dateutil.tz import tzutc
@@ -36,6 +42,7 @@ UNIX_EPOCH = datetime.datetime(1970, 1, 1, tzinfo=tzutc())
 
 
 def get_datasets(location):
+    # type: (Text) -> Iterable[Text]
     location = ensure_trailing_slash(location)
     bucket, prefix = split_s3_bucket_key(location)
     iterator = get_iterator(bucket, prefix, '/', 'CommonPrefixes[].Prefix')
@@ -47,6 +54,7 @@ def get_datasets(location):
 
 
 def get_versions(location):
+    # type: (Text) -> Iterable[Text]
     location = ensure_trailing_slash(location)
     bucket, prefix = split_s3_bucket_key(location)
     iterator = get_iterator(bucket, prefix, '/', 'CommonPrefixes[].Prefix')
@@ -58,6 +66,7 @@ def get_versions(location):
 
 
 def get_iterator(bucket, prefix, delimiter=None, search=None):
+    # type: (Text, Text, Optional[Text], Optional[Text]) -> Iterable[Any]
     client = botocore.session.get_session().create_client('s3')
     paginator = client.get_paginator('list_objects_v2')
     options = {'Bucket': bucket, 'Prefix': prefix}
@@ -70,6 +79,7 @@ def get_iterator(bucket, prefix, delimiter=None, search=None):
 
 
 def get_object_summaries(bucket, prefix):
+    # type: (Text, Text) -> Iterable[Dict[Text, Any]]
     summaries = []
     for result in get_iterator(bucket, prefix, search='Contents[]'):
         if IGNORED_MATCHER.match(result['Key']):
@@ -83,6 +93,7 @@ def get_object_summaries(bucket, prefix):
 
 
 def list_object_summaries(bucket, prefix):
+    # type: (Text, Text) -> Iterable[Dict[Text, Any]]
     for result in get_iterator(bucket, prefix, search='Contents[]'):
         if IGNORED_MATCHER.match(result['Key']):
             continue
@@ -98,6 +109,7 @@ class Dataset(object):
     __slots__ = ['name', 'version', 'columns', 'partitions', 'location', 'partition_keys']
 
     def __init__(self, name, version, columns, partitions, location, partition_keys):
+        # type: (Text, Text, List[Column], List[Partition], Text, List[Column]) -> None
         self.name = name
         self.version = version
         self.columns = columns
@@ -107,29 +119,33 @@ class Dataset(object):
 
     @classmethod
     def get(cls, location):
+        # type: (Text) -> Optional[Dataset]
         location = ensure_trailing_slash(location)
         bucket, prefix = split_s3_bucket_key(location)
-        name, version = NAME_VERSION.search(prefix).groups()
+        matches = re.search(NAME_VERSION, prefix)
+        if not matches:
+            return None
+        name, version = matches.groups()
 
         # get latest object and partition names
         latest = None
-        partition_names = set()
+        partition_names_set = set()
         for summary in list_object_summaries(bucket, prefix):
             if not latest or summary['LastModified'] > latest['LastModified']:
                 latest = summary
-            matches = PARTITION_MATCHER.match(summary['Key'], len(prefix))
-            if matches:
-                partition_names.add(matches.group(1))
+            partition_matches = PARTITION_MATCHER.match(summary['Key'], len(prefix))
+            if partition_matches:
+                partition_names_set.add(partition_matches.group(1))
         if latest is None:
             return None
-        partition_names = sorted(partition_names)
+        partition_names = sorted(partition_names_set)
 
         # read columns from object
         metadata = read_metadata(bucket, latest['Key'], latest['Size'])
         columns = to_columns(metadata.schema)
 
         # get partition keys from last partition
-        partition_keys = []
+        partition_keys = []  # type: List[Column]
         if partition_names:
             partition_keys = [Column(p.split('=')[0], 'string') for p in partition_names[-1].split('/')]
 
@@ -155,7 +171,13 @@ class Dataset(object):
         return dataset
 
     def __eq__(self, other):
+        # type: (object) -> bool
+        if not isinstance(other, Dataset):
+            return NotImplemented
         return self.location == other.location
 
     def __lt__(self, other):
+        # type: (object) -> bool
+        if not isinstance(other, Dataset):
+            return NotImplemented
         return int(self.name[1:]) < int(other.name[1:])

@@ -1,5 +1,7 @@
 import logging
 import time
+from typing import Optional  # noqa: F401
+from typing import Text      # noqa: F401
 
 import click
 
@@ -19,11 +21,12 @@ logging.Formatter.converter = time.gmtime
 logger = logging.getLogger(__name__)
 
 
-def run(src, version, alias):
+def run(src, version=None, alias=None):
+    # type: (Text, Optional[Text], Optional[Text]) -> None
     src = ensure_trailing_slash(src)
 
     if version:
-        location = '{}{}/'.format(src, version)
+        location = u'{}{}/'.format(src, version)
     else:
         locations = sorted(get_versions(src))
         if not locations:
@@ -110,8 +113,9 @@ def run(src, version, alias):
 @click.option('--alias')
 @click.option('--discover', is_flag=True)
 def main(src, version, alias, discover):
+    # type: (Text, Text, Text, bool) -> None
     if discover:
         for location in get_datasets(src):
-            run(src=location, version=None, alias=None)
+            run(src=location)
     else:
         run(src=src, version=version, alias=alias)

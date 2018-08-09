@@ -51,6 +51,9 @@ output/*/index.html
 # Sphinx
 docs/_build
 
+# Mypy
+.mypy_cache/
+
 .DS_Store
 *~
 .*.sw[po]
