@@ -24,7 +24,7 @@ def read(*names, **kwargs):
 
 setup(
     name='pdsm',
-    version='0.1.0',
+    version='0.2.0',
     license='MIT license',
     description='A tool to manage parquet datasets and their definitions in Hive, Presto, and Athena',
     long_description='%s\n%s' % (
@@ -55,8 +55,8 @@ setup(
     install_requires=[
         'botocore>=1.6.5',
         'click>=6.7,<7.0',
-        'thrift==0.10.0',
-        'typing==3.6.4',
+        'thrift==0.11.0',
+        'typing==3.6.6',
     ],
     entry_points={
         'console_scripts': [
