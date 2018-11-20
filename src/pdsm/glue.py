@@ -1,33 +1,33 @@
 import copy
-from typing import Any       # noqa: F401
-from typing import Dict      # noqa: F401
+from typing import Any  # noqa: F401
+from typing import Dict  # noqa: F401
 from typing import Iterable  # noqa: F401
-from typing import List      # noqa: F401
+from typing import List  # noqa: F401
 from typing import Optional  # noqa: F401
-from typing import Text      # noqa: F401
+from typing import Text  # noqa: F401
 
 import botocore.session
 from botocore.exceptions import ClientError
 
-from .models import Column
-from .models import Partition
-from .models import STORAGE_DESCRIPTOR_TEMPLATE
-from .utils import chunks
-from .utils import ensure_trailing_slash
-from .utils import remove_trailing_slash
+from pdsm.models import Column
+from pdsm.models import Partition
+from pdsm.models import STORAGE_DESCRIPTOR_TEMPLATE
+from pdsm.utils import chunks
+from pdsm.utils import ensure_trailing_slash
+from pdsm.utils import remove_trailing_slash
 
 TABLE_INPUT_TEMPLATE = {
-    'Name': '',
-    'Owner': 'hadoop',
-    'StorageDescriptor': STORAGE_DESCRIPTOR_TEMPLATE,
-    'PartitionKeys': [],
-    'TableType': 'EXTERNAL_TABLE',
-    'Parameters': {'EXTERNAL': 'TRUE'},
+    "Name": "",
+    "Owner": "hadoop",
+    "StorageDescriptor": STORAGE_DESCRIPTOR_TEMPLATE,
+    "PartitionKeys": [],
+    "TableType": "EXTERNAL_TABLE",
+    "Parameters": {"EXTERNAL": "TRUE"},
 }  # type: Dict[Text, Any]
 
 
 class Table(object):
-    __slots__ = ['database_name', 'name', 'columns', 'location', 'partition_keys']
+    __slots__ = ["database_name", "name", "columns", "location", "partition_keys"]
 
     def __init__(self, database_name, name, columns, location, partition_keys):
         # type: (Text, Text, List[Column], Text, List[Column]) -> None
@@ -39,53 +39,65 @@ class Table(object):
 
     def list_partitions(self):
         # type: () -> Iterable[Partition]
-        client = botocore.session.get_session().create_client('glue')
-        opts = {'DatabaseName': self.database_name, 'TableName': self.name}
+        client = botocore.session.get_session().create_client("glue")
+        opts = {"DatabaseName": self.database_name, "TableName": self.name}
         while True:
             result = client.get_partitions(**opts)
-            if 'Partitions' in result:
-                for pd in result['Partitions']:
+            if "Partitions" in result:
+                for pd in result["Partitions"]:
                     yield Partition.from_input(pd)
-            if 'NextToken' in result:
-                opts['NextToken'] = result['NextToken']
+            if "NextToken" in result:
+                opts["NextToken"] = result["NextToken"]
             else:
                 break
 
     def get_partitions(self):
         # type: () -> List[Partition]
-        client = botocore.session.get_session().create_client('glue')
-        opts = {'DatabaseName': self.database_name, 'TableName': self.name}
+        client = botocore.session.get_session().create_client("glue")
+        opts = {"DatabaseName": self.database_name, "TableName": self.name}
         partitions = []  # type: List[Partition]
         while True:
             result = client.get_partitions(**opts)
-            if 'Partitions' in result:
-                partitions += [Partition.from_input(pd) for pd in result['Partitions']]
-            if 'NextToken' in result:
-                opts['NextToken'] = result['NextToken']
+            if "Partitions" in result:
+                partitions += [Partition.from_input(pd) for pd in result["Partitions"]]
+            if "NextToken" in result:
+                opts["NextToken"] = result["NextToken"]
             else:
                 break
         return partitions
 
-    def add_partitions(self, partitions):
-        # type: (List[Partition]) -> None
-        client = botocore.session.get_session().create_client('glue')
-        for partition_chunk in chunks(partitions, 100):
-            data = {'DatabaseName': self.database_name,
-                    'TableName': self.name,
-                    'PartitionInputList': [partition.to_input() for partition in partition_chunk]}
+    def add_partitions(self, partitions, batch_size=100):
+        # type: (List[Partition], int) -> None
+        client = botocore.session.get_session().create_client("glue")
+        for partition_chunk in chunks(partitions, batch_size):
+            data = {
+                "DatabaseName": self.database_name,
+                "TableName": self.name,
+                "PartitionInputList": [
+                    partition.to_input() for partition in partition_chunk
+                ],
+            }
             client.batch_create_partition(**data)
 
-    def recreate_partitions(self, partitions):
+    def update_partitions(self, partitions):
         # type: (List[Partition]) -> None
-        client = botocore.session.get_session().create_client('glue')
+        client = botocore.session.get_session().create_client("glue")
         for partition_chunk in chunks(partitions, 25):
-            data = {'DatabaseName': self.database_name,
-                    'TableName': self.name,
-                    'PartitionsToDelete': [{'Values': partition.values} for partition in partition_chunk]}
+            data = {
+                "DatabaseName": self.database_name,
+                "TableName": self.name,
+                "PartitionsToDelete": [
+                    {"Values": partition.values} for partition in partition_chunk
+                ],
+            }
             client.batch_delete_partition(**data)
-            data = {'DatabaseName': self.database_name,
-                    'TableName': self.name,
-                    'PartitionInputList': [partition.to_input() for partition in partition_chunk]}
+            data = {
+                "DatabaseName": self.database_name,
+                "TableName": self.name,
+                "PartitionInputList": [
+                    partition.to_input() for partition in partition_chunk
+                ],
+            }
             client.batch_create_partition(**data)
 
     @classmethod
@@ -93,38 +105,42 @@ class Table(object):
         # type: (Text, Dict[Text, Any]) -> Table
         table = cls(
             database_name=database_name,
-            name=data['Name'],
-            columns=[Column.from_input(cd) for cd in data['StorageDescriptor']['Columns']],
-            location=ensure_trailing_slash(data['StorageDescriptor']['Location']),
-            partition_keys=[Column.from_input(cd) for cd in data['PartitionKeys']],
+            name=data["Name"],
+            columns=[
+                Column.from_input(cd) for cd in data["StorageDescriptor"]["Columns"]
+            ],
+            location=ensure_trailing_slash(data["StorageDescriptor"]["Location"]),
+            partition_keys=[Column.from_input(cd) for cd in data["PartitionKeys"]],
         )
         return table
 
     def to_input(self):
         # type: () -> Dict[Text, Any]
         data = copy.deepcopy(TABLE_INPUT_TEMPLATE)
-        data['Name'] = self.name
-        data['StorageDescriptor']['Columns'] = [column.to_input() for column in self.columns]
-        data['StorageDescriptor']['Location'] = remove_trailing_slash(self.location)
-        data['PartitionKeys'] = [column.to_input() for column in self.partition_keys]
+        data["Name"] = self.name
+        data["StorageDescriptor"]["Columns"] = [
+            column.to_input() for column in self.columns
+        ]
+        data["StorageDescriptor"]["Location"] = remove_trailing_slash(self.location)
+        data["PartitionKeys"] = [column.to_input() for column in self.partition_keys]
         return data
 
     @classmethod
     def get(cls, database_name, name):
         # type: (Text, Text) -> Optional[Table]
-        client = botocore.session.get_session().create_client('glue')
+        client = botocore.session.get_session().create_client("glue")
         try:
             result = client.get_table(DatabaseName=database_name, Name=name)
         except ClientError as ex:
-            if ex.response['Error']['Code'] == 'EntityNotFoundException':
+            if ex.response["Error"]["Code"] == "EntityNotFoundException":
                 return None
             raise ex
-        return cls.from_input(database_name, result['Table'])
+        return cls.from_input(database_name, result["Table"])
 
     @classmethod
     def create(cls, database_name, name, columns, location, partition_keys):
         # type: (Text, Text, List[Column], Text, List[Column]) -> Table
-        client = botocore.session.get_session().create_client('glue')
+        client = botocore.session.get_session().create_client("glue")
         table = cls(
             database_name=database_name,
             name=name,
@@ -132,16 +148,13 @@ class Table(object):
             location=location,
             partition_keys=partition_keys,
         )
-        client.create_table(
-            DatabaseName=database_name,
-            TableInput=table.to_input(),
-        )
+        client.create_table(DatabaseName=database_name, TableInput=table.to_input())
         return table
 
     @classmethod
     def update(cls, database_name, name, columns, location, partition_keys):
         # type: (Text, Text, List[Column], Text, List[Column]) -> Table
-        client = botocore.session.get_session().create_client('glue')
+        client = botocore.session.get_session().create_client("glue")
         table = cls(
             database_name=database_name,
             name=name,
@@ -149,17 +162,11 @@ class Table(object):
             location=location,
             partition_keys=partition_keys,
         )
-        client.update_table(
-            DatabaseName=database_name,
-            TableInput=table.to_input(),
-        )
+        client.update_table(DatabaseName=database_name, TableInput=table.to_input())
         return table
 
     @classmethod
     def drop(cls, database_name, name):
         # type: (Text, Text) -> None
-        client = botocore.session.get_session().create_client('glue')
-        client.delete_table(
-            DatabaseName=database_name,
-            Name=name,
-        )
+        client = botocore.session.get_session().create_client("glue")
+        client.delete_table(DatabaseName=database_name, Name=name)

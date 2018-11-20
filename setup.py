@@ -17,50 +17,48 @@ from setuptools import setup
 
 def read(*names, **kwargs):
     return io.open(
-        join(dirname(__file__), *names),
-        encoding=kwargs.get('encoding', 'utf8')
+        join(dirname(__file__), *names), encoding=kwargs.get("encoding", "utf8")
     ).read()
 
 
 setup(
-    name='pdsm',
-    version='0.2.0',
-    license='MIT license',
-    description='A tool to manage parquet datasets and their definitions in Hive, Presto, and Athena',
-    long_description='%s\n%s' % (
-        re.compile('^.. start-badges.*^.. end-badges', re.M | re.S).sub('', read('README.rst')),
-        re.sub(':[a-z]+:`~?(.*?)`', r'``\1``', read('CHANGELOG.rst'))
+    name="pdsm",
+    version="0.2.0",
+    license="MIT license",
+    description="A tool to manage parquet datasets and their definitions in Hive, Presto, and Athena",
+    long_description="%s\n%s"
+    % (
+        re.compile("^.. start-badges.*^.. end-badges", re.M | re.S).sub(
+            "", read("README.rst")
+        ),
+        re.sub(":[a-z]+:`~?(.*?)`", r"``\1``", read("CHANGELOG.rst")),
     ),
-    author='Blake Imsland',
-    author_email='blake@retroco.de',
-    url='https://github.com/robotblake/pdsm',
-    packages=find_packages('src'),
-    package_dir={'': 'src'},
-    py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
+    author="Blake Imsland",
+    author_email="blake@retroco.de",
+    url="https://github.com/robotblake/pdsm",
+    packages=find_packages("src"),
+    package_dir={"": "src"},
+    py_modules=[splitext(basename(path))[0] for path in glob("src/*.py")],
     include_package_data=True,
     zip_safe=False,
     classifiers=[
         # complete classifier list: http://pypi.python.org/pypi?%3Aaction=list_classifiers
-        'Development Status :: 5 - Production/Stable',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: MIT License',
-        'Operating System :: Unix',
-        'Operating System :: POSIX',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: Implementation :: CPython',
-        'Topic :: Utilities',
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: Unix",
+        "Operating System :: POSIX",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: Implementation :: CPython",
+        "Topic :: Utilities",
     ],
     install_requires=[
-        'botocore>=1.6.5',
-        'click>=6.7,<7.0',
-        'thrift==0.11.0',
-        'typing==3.6.6',
+        "botocore>=1.6.5",
+        "click>=6.7,<7.0",
+        "thrift==0.11.0",
+        "typing==3.6.6",
     ],
-    entry_points={
-        'console_scripts': [
-            'pdsm = pdsm.cli:main',
-        ]
-    },
+    entry_points={"console_scripts": ["pdsm = pdsm.cli:main"]},
 )
